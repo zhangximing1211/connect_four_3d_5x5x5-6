@@ -22,6 +22,9 @@ DIRS = [
 def in_bounds(x:int, y:int, z:int) -> bool:
     return 0 <= x < X_SIZE and 0 <= y < Y_SIZE and 0 <= z < Z_SIZE
 
+def in_bounds_xy(x:int, y:int) -> bool:
+    return 0 <= x < X_SIZE and 0 <= y < Y_SIZE
+
 def idx(x:int, y:int, z:int) -> int:
     return (x * Y_SIZE + y) * Z_SIZE + z
 
@@ -52,10 +55,14 @@ class Board3D:
         self.cells[idx(x,y,z)] = v
 
     def next_free_z(self, x:int, y:int) -> Optional[int]:
+        if not in_bounds_xy(x, y):
+            return None
         h = self.heights[x * Y_SIZE + y]
         return h if h < Z_SIZE else None
 
     def top_z(self, x:int, y:int) -> int:
+        if not in_bounds_xy(x, y):
+            return -1
         return self.heights[x * Y_SIZE + y] - 1
 
     def valid_moves(self) -> List[Tuple[int,int]]:
@@ -67,6 +74,8 @@ class Board3D:
         return out
 
     def drop(self, x:int, y:int, player:int) -> Optional[Move]:
+        if not in_bounds_xy(x, y) or player == EMPTY:
+            return None
         col = x * Y_SIZE + y
         z = self.heights[col]
         if z >= Z_SIZE:

@@ -51,11 +51,12 @@ In conclusion, **3D Connect Four 5x5x5** is a strategy game that expands a class
 
 - Python 3.9+
 - Pygame
+- ModernGL (optional, enables the GPU 3D renderer)
 
 ## Installation
 
 ```bash
-python3 -m pip install pygame
+python3 -m pip install pygame moderngl
 ```
 
 ## Run

@@ -65,8 +65,8 @@ class Node:
     move: Optional[Tuple[int,int]]
     visits: int = 0
     value: float = 0.0          # accumulated reward from root player's perspective
-    children: Dict[Tuple[int,int], "Node"] = None
-    untried: List[Tuple[int,int]] = None
+    children: Optional[Dict[Tuple[int,int], "Node"]] = None
+    untried: Optional[List[Tuple[int,int]]] = None
 
     def __post_init__(self):
         self.children = {} if self.children is None else self.children
@@ -82,6 +82,10 @@ class MCTSAI:
         self.c = c
 
     def choose(self, board: Board3D, player:int) -> Tuple[int,int]:
+        valid_moves = board.valid_moves()
+        if not valid_moves:
+            raise ValueError("MCTSAI.choose called with no legal moves")
+
         # Tactical pre-checks
         wins = immediate_winning_moves(board, player)
         if wins:
@@ -91,7 +95,7 @@ class MCTSAI:
             return random.choice(blocks)
 
         root = Node(parent=None, move=None)
-        root.untried = board.valid_moves()
+        root.untried = valid_moves.copy()
         root_player = player
 
         for _ in range(self.simulations):
@@ -147,7 +151,7 @@ class MCTSAI:
                 node = node.parent
 
         if not root.children:
-            return random.choice(board.valid_moves())
+            return random.choice(valid_moves)
 
         # choose by highest visit count, tie-break by value
         best_move = None
@@ -158,6 +162,8 @@ class MCTSAI:
                 best_visits = ch.visits
                 best_value = ch.value
                 best_move = m
+        if best_move is None:
+            return random.choice(valid_moves)
         return best_move
 
     def _uct_select(self, node: Node) -> Node:
@@ -174,4 +180,6 @@ class MCTSAI:
             if score > best_score:
                 best_score = score
                 best_child = ch
+        if best_child is None:
+            raise RuntimeError("UCT selection called on a node without children")
         return best_child

@@ -161,9 +161,13 @@ class AlphaBetaAI:
 
     def choose(self, board: Board3D, player:int) -> Tuple[int,int]:
         self.tt.clear()
+        legal_moves = board.valid_moves()
+        if not legal_moves:
+            raise ValueError("AlphaBetaAI.choose called with no legal moves")
+
         # --- 禁止 AI 第一步走 z 轴（只能落在空柱子上）---
         if player == P2 and board.moves and len(board.moves) == 1:
-            legal = [(x, y) for (x, y) in board.valid_moves() if board.next_free_z(x, y) == 0]
+            legal = [(x, y) for (x, y) in legal_moves if board.next_free_z(x, y) == 0]
             if legal:
                 return max(legal, key=lambda m: center_bonus(m[0], m[1]))
 
@@ -186,7 +190,7 @@ class AlphaBetaAI:
                 if direct:
                     return max(direct, key=lambda m: center_bonus(m[0],m[1]))
 
-        moves = self._ordered_moves(board, board.valid_moves(), player, pv_move=None)
+        moves = self._ordered_moves(board, legal_moves, player, pv_move=None)
 
         best_move = moves[0]
         best_val = -math.inf
@@ -195,7 +199,7 @@ class AlphaBetaAI:
 
         for m in moves:
             board.drop(m[0], m[1], player)
-            val = -self._negamax(board, other(player), self.depth-1, -beta, -alpha, root=player)
+            val = self._search(board, other(player), self.depth - 1, alpha, beta, root=player)
             board.undo()
             if val > best_val:
                 best_val = val
@@ -233,7 +237,7 @@ class AlphaBetaAI:
         scored.sort(reverse=True, key=lambda t:t[0])
         return [m for _,m in scored]
 
-    def _negamax(self, board: Board3D, to_move:int, depth:int, alpha:float, beta:float, root:int) -> float:
+    def _search(self, board: Board3D, to_move:int, depth:int, alpha:float, beta:float, root:int) -> float:
         winner = board.check_winner()
         if winner != 0:
             if winner == root:
@@ -267,27 +271,36 @@ class AlphaBetaAI:
         pv = ent.best_move if ent is not None else None
         moves = self._ordered_moves(board, board.valid_moves(), to_move, pv_move=pv)
 
-        best = -math.inf
+        maximizing = to_move == root
+        best = -math.inf if maximizing else math.inf
         best_move = moves[0]
         orig_alpha = alpha
+        orig_beta = beta
 
         for m in moves:
             board.drop(m[0], m[1], to_move)
-            val = -self._negamax(board, other(to_move), depth-1, -beta, -alpha, root)
+            val = self._search(board, other(to_move), depth - 1, alpha, beta, root)
             board.undo()
 
-            if val > best:
-                best = val
-                best_move = m
-            if val > alpha:
-                alpha = val
+            if maximizing:
+                if val > best:
+                    best = val
+                    best_move = m
+                if val > alpha:
+                    alpha = val
+            else:
+                if val < best:
+                    best = val
+                    best_move = m
+                if val < beta:
+                    beta = val
             if alpha >= beta:
                 break
 
         flag = EXACT
         if best <= orig_alpha:
             flag = UPPER
-        elif best >= beta:
+        elif best >= orig_beta:
             flag = LOWER
 
         if len(self.tt) >= self.tt_size:

@@ -5,19 +5,74 @@ from game import Game
 from camera import Camera
 from render import Renderer, MenuScene
 
+try:
+    from render_gl import ModernGLRenderer, is_available as gl_renderer_available
+except Exception:
+    ModernGLRenderer = None
+
+    def gl_renderer_available() -> bool:
+        return False
+
 STATE_MENU = "menu"
 STATE_GAME = "game"
 
 def main():
     pygame.init()
     pygame.display.set_caption("立体四子棋 5×5×5 — AlphaBeta / MCTS")
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+    def open_cpu_window():
+        try:
+            return pygame.display.set_mode((WIDTH, HEIGHT), pygame.DOUBLEBUF, vsync=1)
+        except TypeError:
+            return pygame.display.set_mode((WIDTH, HEIGHT), pygame.DOUBLEBUF)
+
+    def open_gl_window():
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
+        pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE, 24)
+        pygame.display.gl_set_attribute(pygame.GL_DOUBLEBUFFER, 1)
+        try:
+            pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS, 1)
+            pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 4)
+        except pygame.error:
+            pass
+        try:
+            return pygame.display.set_mode((WIDTH, HEIGHT), pygame.OPENGL | pygame.DOUBLEBUF, vsync=1)
+        except TypeError:
+            return pygame.display.set_mode((WIDTH, HEIGHT), pygame.OPENGL | pygame.DOUBLEBUF)
+
+    screen = open_cpu_window()
     clock = pygame.time.Clock()
 
     cam = Camera()
     game = Game()
     renderer = Renderer(screen, cam, X_SIZE, Y_SIZE, Z_SIZE)
+    renderer.render_backend = "CPU Pygame"
     menu = MenuScene(screen)
+
+    def switch_to_game_renderer():
+        nonlocal screen, renderer
+        if gl_renderer_available() and ModernGLRenderer is not None:
+            try:
+                screen = open_gl_window()
+                renderer = ModernGLRenderer(screen, cam, X_SIZE, Y_SIZE, Z_SIZE)
+                pygame.display.set_caption("立体四子棋 5×5×5 — GPU 3D ModernGL")
+                return
+            except Exception as exc:
+                print(f"ModernGL renderer unavailable, falling back to Pygame renderer: {exc}")
+        screen = open_cpu_window()
+        renderer = Renderer(screen, cam, X_SIZE, Y_SIZE, Z_SIZE)
+        renderer.render_backend = "CPU Pygame"
+        pygame.display.set_caption("立体四子棋 5×5×5 — CPU Pygame fallback")
+
+    def switch_to_menu_renderer():
+        nonlocal screen, renderer, menu
+        screen = open_cpu_window()
+        renderer = Renderer(screen, cam, X_SIZE, Y_SIZE, Z_SIZE)
+        renderer.render_backend = "CPU Pygame"
+        menu = MenuScene(screen)
+        pygame.display.set_caption("立体四子棋 5×5×5 — AlphaBeta / MCTS")
 
     state = STATE_MENU
     running = True
@@ -46,6 +101,7 @@ def main():
                             game.configure(human_first=False, engine=menu.selected_ai)
                         elif choice == "two_player":
                             game.configure(two_player=True)
+                        switch_to_game_renderer()
                         state = STATE_GAME
 
             menu.draw()
@@ -67,6 +123,7 @@ def main():
                 elif event.key == pygame.K_m:
                     # 回到主菜单
                     game.reset()
+                    switch_to_menu_renderer()
                     state = STATE_MENU
 
                 # view control

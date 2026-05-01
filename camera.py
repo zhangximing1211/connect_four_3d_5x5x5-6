@@ -10,7 +10,7 @@ def deg2rad(d: float) -> float:
 @dataclass
 class Camera:
     yaw_deg: float = 35.0
-    pitch_deg: float = 25.0
+    pitch_deg: float = 22.0
     dist: float = CAM_DIST
     scale: float = SCALE
 
@@ -37,5 +37,5 @@ class Camera:
             depth = 0.2
 
         sx = (x2 / depth) * self.scale + w * 0.5
-        sy = (-z2 / depth) * self.scale + h * 0.58
+        sy = (-z2 / depth) * self.scale + h * 0.54
         return int(sx), int(sy), depth

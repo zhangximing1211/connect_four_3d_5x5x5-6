@@ -38,7 +38,7 @@ class Game:
         else:
             self.human_player = P2
             self.ai_player = P1
-        self.ai_engine = engine
+        self.ai_engine = engine if engine in ("ab", "mcts") else "ab"
         self._rebuild_ai()
         self.reset()
 
@@ -59,7 +59,7 @@ class Game:
         self.current = P1
 
     def set_ai_engine(self, engine: str):
-        self.ai_engine = engine
+        self.ai_engine = engine if engine in ("ab", "mcts") else "ab"
         self._rebuild_ai()
 
     def set_episodes(self, episodes: int):
