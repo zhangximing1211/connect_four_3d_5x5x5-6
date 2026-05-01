@@ -1,29 +1,8 @@
 from __future__ import annotations
 import math
-import random
-from pathlib import Path
-from typing import Dict, Tuple, Optional, List
-import pygame
-from config import X_SIZE, Y_SIZE, Z_SIZE, GRID_SPACING, DISC_RADIUS, HOVER_RADIUS, UI_FONT_SIZE, EMPTY, P1, P2
-from camera import Camera
-
-FONT_PATH_CANDIDATES = [
-    "/System/Library/Fonts/Hiragino Sans GB.ttc",
-    "/System/Library/Fonts/STHeiti Medium.ttc",
-    "/System/Library/Fonts/STHeiti Light.ttc",
-    "/Library/Fonts/Arial Unicode.ttf",
-]
-
-FONT_NAME_CANDIDATES = [
-    "Hiragino Sans GB",
-    "STHeiti",
-    "PingFang SC",
-    "Arial Unicode MS",
-    "SimHei",
-    "Microsoft YaHei",
-    "Noto Sans CJK SC",
-    "WenQuanYi Zen Hei",
-]
+import random 
+"Noto Sans CJK SC",
+"WenQuanYi Zen Hei",
 
 VISUAL_Z_SCALE = 1.04
 SPRITE_SCALE = 4
@@ -302,33 +281,26 @@ class MenuScene:
         overlay = pygame.Surface((w, h), pygame.SRCALPHA)
 
         pts = {}
-        cx = (X_SIZE - 1) * 0.5
-        cy = (Y_SIZE - 1) * 0.5
-        cz = (Z_SIZE - 1) * 0.5
         for x in range(X_SIZE):
             for y in range(Y_SIZE):
-                for z in range(Z_SIZE):
-                    wx = (x - cx) * spacing
-                    wy = (y - cy) * spacing
-                    wz = (z - cz) * spacing * 0.94
+                for z in range(5):
+                    wx = (x - 2) * spacing
+                    wy = (y - 2) * spacing
+                    wz = (z - 2) * spacing * 0.94
                     pts[(x, y, z)] = self._project_preview(wx, wy, wz, center, scale, yaw, pitch)
 
-        x_last = X_SIZE - 1
-        y_last = Y_SIZE - 1
-        z_last = Z_SIZE - 1
-        base_corners = [pts[(0, 0, 0)][:2], pts[(x_last, 0, 0)][:2],
-                        pts[(x_last, y_last, 0)][:2], pts[(0, y_last, 0)][:2]]
+        base_corners = [pts[(0, 0, 0)][:2], pts[(4, 0, 0)][:2], pts[(4, 4, 0)][:2], pts[(0, 4, 0)][:2]]
         pygame.draw.polygon(overlay, (255, 255, 255, 16), base_corners)
         pygame.draw.polygon(overlay, (96, 168, 224, 115), base_corners, width=2)
 
         for x in range(X_SIZE):
             for y in range(Y_SIZE):
                 bottom = pts[(x, y, 0)][:2]
-                top = pts[(x, y, z_last)][:2]
+                top = pts[(x, y, 4)][:2]
                 pygame.draw.line(overlay, (72, 184, 232, 38), bottom, top, 8)
                 pygame.draw.line(overlay, (158, 210, 248, 125), bottom, top, 2)
 
-        for z in (0, z_last):
+        for z in (0, 4):
             for y in range(Y_SIZE):
                 for x in range(X_SIZE - 1):
                     pygame.draw.line(overlay, (122, 155, 205, 72), pts[(x, y, z)][:2], pts[(x + 1, y, z)][:2], 1)
@@ -336,26 +308,11 @@ class MenuScene:
                 for y in range(Y_SIZE - 1):
                     pygame.draw.line(overlay, (122, 155, 205, 72), pts[(x, y, z)][:2], pts[(x, y + 1, z)][:2], 1)
 
-        mid_x = X_SIZE // 2
-        mid_y = Y_SIZE // 2
-        left_x = max(0, mid_x - 1)
-        right_x = min(x_last, mid_x + 1)
-        low_y = max(0, mid_y - 1)
-        high_y = min(y_last, mid_y + 1)
-        preview_candidates = [
-            (0, 0, 0, P1), (0, 0, min(1, z_last), P2), (left_x, low_y, 0, P2),
-            (mid_x, mid_y, 0, P1), (mid_x, mid_y, min(1, z_last), P1),
-            (mid_x, mid_y, min(2, z_last), P2), (right_x, mid_y, 0, P2),
-            (right_x, high_y, 0, P1), (x_last, y_last, 0, P2),
-            (x_last, y_last, min(1, z_last), P1), (left_x, high_y, 0, P1),
+        preview_moves = [
+            (0, 0, 0, P1), (0, 0, 1, P2), (1, 1, 0, P2), (2, 2, 0, P1),
+            (2, 2, 1, P1), (2, 2, 2, P2), (3, 2, 0, P2), (3, 3, 0, P1),
+            (4, 4, 0, P2), (4, 4, 1, P1), (1, 3, 0, P1),
         ]
-        preview_moves = []
-        seen_preview = set()
-        for move in preview_candidates:
-            key = move[:3]
-            if key not in seen_preview:
-                preview_moves.append(move)
-                seen_preview.add(key)
         preview_discs = []
         for x, y, z, player in preview_moves:
             sx, sy, depth = pts[(x, y, z)]
@@ -417,12 +374,11 @@ class Renderer:
                     p = board.get(x,y,z)
                     if p != EMPTY:
                         sx,sy,depth = slot_centers[(x,y)][z]
-                        discs.append((depth, z, p, sx, sy, x, y))
+                        discs.append((depth, z, p, sx, sy))
         discs.sort(reverse=True, key=lambda t: t[0])
 
-        for depth, z, p, sx, sy, x, y in discs:
-            dimmed = focus_col is not None and (x, y) != focus_col
-            self._draw_disc(p, sx, sy, z, depth, dimmed)
+        for depth, z, p, sx, sy in discs:
+            self._draw_disc(p, sx, sy, z, depth)
 
         if board.moves:
             last = board.moves[-1]
@@ -443,7 +399,6 @@ class Renderer:
                     self.screen.blit(guide, (0, 0))
 
         self._draw_column_panel(board, focus_col)
-        self._draw_minimap(board, focus_col)
         self._draw_ui(board, current_player, mode_text, episodes, human_player, two_player)
 
     def _draw_last_move_marker(self, sx: int, sy: int, radius: int):
@@ -489,34 +444,30 @@ class Renderer:
         self.screen.blit(overlay, (0, 0))
 
     def _draw_grid(self, col_centers: Dict[Tuple[int,int], Tuple[int,int,float]]):
-        w, h = self.screen.get_size()
-        pts = [
-            self._project_slot(-0.5, -0.5, 0, w, h)[:2],
-            self._project_slot(self.X - 0.5, -0.5, 0, w, h)[:2],
-            self._project_slot(self.X - 0.5, self.Y - 0.5, 0, w, h)[:2],
-            self._project_slot(-0.5, self.Y - 0.5, 0, w, h)[:2],
-        ]
+        corners = [(0,0), (self.X-1,0), (self.X-1, self.Y-1), (0, self.Y-1)]
+        pts = [col_centers[c][:2] for c in corners]
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         shadow_pts = [(x, y + 22) for x, y in pts]
-        pygame.draw.polygon(overlay, (0, 0, 0, 74), shadow_pts)
-        pygame.draw.polygon(overlay, (16, 24, 36, 142), pts)
-        pygame.draw.polygon(overlay, (92, 150, 196, 74), pts, width=5)
-        pygame.draw.polygon(overlay, (176, 210, 240, 116), pts, width=2)
+        pygame.draw.polygon(overlay, (0, 0, 0, 96), shadow_pts)
+        pygame.draw.polygon(overlay, (15, 20, 29, 238), pts)
+        pygame.draw.polygon(overlay, (48, 82, 112, 78), [(x, y + 5) for x, y in pts], width=6)
+        pygame.draw.polygon(overlay, (158, 184, 214, 126), pts, width=2)
+        pygame.draw.polygon(overlay, (255, 255, 255, 42), [(x, y - 1) for x, y in pts], width=1)
 
-        for x in range(self.X + 1):
-            gx = x - 0.5
-            p1 = self._project_slot(gx, -0.5, 0, w, h)[:2]
-            p2 = self._project_slot(gx, self.Y - 0.5, 0, w, h)[:2]
-            pygame.draw.line(overlay, (94, 142, 184, 74), p1, p2, 1)
-        for y in range(self.Y + 1):
-            gy = y - 0.5
-            p1 = self._project_slot(-0.5, gy, 0, w, h)[:2]
-            p2 = self._project_slot(self.X - 0.5, gy, 0, w, h)[:2]
-            pygame.draw.line(overlay, (94, 142, 184, 74), p1, p2, 1)
+        for y in range(self.Y):
+            for x in range(self.X-1):
+                p1 = col_centers[(x,y)][:2]
+                p2 = col_centers[(x+1,y)][:2]
+                pygame.draw.line(overlay, (78, 112, 146, 82), p1, p2, 2)
+        for x in range(self.X):
+            for y in range(self.Y-1):
+                p1 = col_centers[(x,y)][:2]
+                p2 = col_centers[(x,y+1)][:2]
+                pygame.draw.line(overlay, (78, 112, 146, 82), p1, p2, 2)
 
         for (x,y),(sx,sy,_) in col_centers.items():
-            pygame.draw.circle(overlay, (28, 37, 50, 220), (sx, sy), 5)
-            pygame.draw.circle(overlay, (136, 168, 202, 128), (sx, sy), 5, 1)
+            pygame.draw.circle(overlay, (28, 37, 50, 240), (sx, sy), 8)
+            pygame.draw.circle(overlay, (136, 168, 202, 138), (sx, sy), 8, 1)
             pygame.draw.circle(overlay, (225, 234, 244, 138), (sx, sy), 2)
 
         self.screen.blit(overlay, (0, 0))
@@ -528,12 +479,11 @@ class Renderer:
     def _disc_radius(self, depth: float) -> int:
         perspective = self.cam.dist / max(0.75, depth)
         radius = int(round(DISC_RADIUS * perspective))
-        return max(8, min(18, radius))
+        return max(10, min(23, radius))
 
     def _draw_columns(self, board, slot_centers: Dict[Tuple[int,int], List[Tuple[int,int,float]]],
                       focus_col: Optional[Tuple[int,int]]):
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        w, h = self.screen.get_size()
         layers = []
         for z in range(self.Z):
             avg_depth = sum(slot_centers[(x, y)][z][2] for x in range(self.X) for y in range(self.Y)) / (self.X * self.Y)
@@ -541,33 +491,33 @@ class Renderer:
 
         for _, z in sorted(layers, reverse=True):
             corners = [
-                self._project_slot(-0.5, -0.5, z, w, h)[:2],
-                self._project_slot(self.X - 0.5, -0.5, z, w, h)[:2],
-                self._project_slot(self.X - 0.5, self.Y - 0.5, z, w, h)[:2],
-                self._project_slot(-0.5, self.Y - 0.5, z, w, h)[:2],
+                slot_centers[(0, 0)][z][:2],
+                slot_centers[(self.X - 1, 0)][z][:2],
+                slot_centers[(self.X - 1, self.Y - 1)][z][:2],
+                slot_centers[(0, self.Y - 1)][z][:2],
             ]
-            layer_alpha = 10 + z * 3
-            line_alpha = 46 + z * 8
-            pygame.draw.polygon(overlay, (70, 128, 168, layer_alpha), corners)
-            pygame.draw.polygon(overlay, (166, 204, 236, line_alpha), corners, width=1)
+            layer_alpha = 4 + z * 2
+            line_alpha = 34 + z * 7
+            pygame.draw.polygon(overlay, (70, 118, 155, layer_alpha), corners)
+            pygame.draw.polygon(overlay, (150, 188, 220, line_alpha), corners, width=1)
 
-            for x in range(self.X + 1):
-                gx = x - 0.5
-                p1 = self._project_slot(gx, -0.5, z, w, h)[:2]
-                p2 = self._project_slot(gx, self.Y - 0.5, z, w, h)[:2]
-                pygame.draw.line(overlay, (108, 158, 202, max(24, line_alpha - 16)), p1, p2, 1)
-            for y in range(self.Y + 1):
-                gy = y - 0.5
-                p1 = self._project_slot(-0.5, gy, z, w, h)[:2]
-                p2 = self._project_slot(self.X - 0.5, gy, z, w, h)[:2]
-                pygame.draw.line(overlay, (108, 158, 202, max(24, line_alpha - 16)), p1, p2, 1)
+            for y in range(self.Y):
+                for x in range(self.X - 1):
+                    p1 = slot_centers[(x, y)][z][:2]
+                    p2 = slot_centers[(x + 1, y)][z][:2]
+                    pygame.draw.line(overlay, (104, 148, 188, max(18, line_alpha - 14)), p1, p2, 1)
+            for x in range(self.X):
+                for y in range(self.Y - 1):
+                    p1 = slot_centers[(x, y)][z][:2]
+                    p2 = slot_centers[(x, y + 1)][z][:2]
+                    pygame.draw.line(overlay, (104, 148, 188, max(18, line_alpha - 14)), p1, p2, 1)
 
             label_pt = slot_centers[(self.X - 1, self.Y - 1)][z]
             pygame.draw.circle(overlay, (180, 205, 232, 70), label_pt[:2], 3)
 
-        for corner in ((-0.5, -0.5), (self.X - 0.5, -0.5), (self.X - 0.5, self.Y - 0.5), (-0.5, self.Y - 0.5)):
-            bottom = self._project_slot(corner[0], corner[1], 0, w, h)
-            top = self._project_slot(corner[0], corner[1], self.Z - 1, w, h)
+        for corner in ((0, 0), (self.X - 1, 0), (self.X - 1, self.Y - 1), (0, self.Y - 1)):
+            bottom = slot_centers[corner][0]
+            top = slot_centers[corner][self.Z - 1]
             pygame.draw.line(overlay, (86, 128, 168, 48), bottom[:2], top[:2], 2)
             pygame.draw.line(overlay, (220, 235, 255, 34), bottom[:2], top[:2], 1)
 
@@ -674,54 +624,6 @@ class Renderer:
 
         self.screen.blit(panel, panel_rect.topleft)
 
-    def _draw_minimap(self, board, focus_col: Optional[Tuple[int, int]]):
-        panel_w = 238
-        panel_h = 238
-        panel_x = 22
-        panel_y = self.screen.get_height() - panel_h - 22
-        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (9, 13, 20, 214), panel.get_rect(), border_radius=14)
-        pygame.draw.rect(panel, (105, 135, 174, 120), panel.get_rect(), width=1, border_radius=14)
-
-        title = self.small.render("顶视列图", True, (226, 235, 248))
-        panel.blit(title, (16, 12))
-
-        cell = 34
-        gap = 4
-        start_x = 19
-        start_y = 48
-        last = board.moves[-1] if board.moves else None
-
-        for y in range(self.Y - 1, -1, -1):
-            for x in range(self.X):
-                gx = start_x + x * (cell + gap)
-                gy = start_y + (self.Y - 1 - y) * (cell + gap)
-                rect = pygame.Rect(gx, gy, cell, cell)
-                is_focus = focus_col == (x, y)
-                pygame.draw.rect(panel, (18, 25, 36, 230), rect, border_radius=7)
-                pygame.draw.rect(panel, (82, 104, 134, 115), rect, width=1, border_radius=7)
-
-                stripe_h = max(3, (cell - 10) // self.Z)
-                for z in range(self.Z):
-                    p = board.get(x, y, z)
-                    if p == EMPTY:
-                        color = (52, 65, 84, 120)
-                    elif p == P1:
-                        color = (*P1_CORE, 225)
-                    else:
-                        color = (*P2_CORE, 225)
-                    stripe_y = gy + cell - 6 - (z + 1) * stripe_h
-                    pygame.draw.rect(panel, color, (gx + 7, stripe_y, cell - 14, stripe_h - 1), border_radius=2)
-
-                if last is not None and (last.x, last.y) == (x, y):
-                    pygame.draw.circle(panel, (255, 255, 255, 190), rect.center, 4)
-
-                if is_focus:
-                    pygame.draw.rect(panel, (255, 220, 90, 72), rect.inflate(7, 7), border_radius=10)
-                    pygame.draw.rect(panel, PANEL_NEXT_COLOR, rect.inflate(3, 3), width=2, border_radius=9)
-
-        self.screen.blit(panel, (panel_x, panel_y))
-
     def _player_palette(self, player: int) -> Tuple[Tuple[int, int, int], Tuple[int, int, int],
                                                     Tuple[int, int, int], Tuple[int, int, int]]:
         if player == P1:
@@ -824,16 +726,12 @@ class Renderer:
         sprite = self._ghost_cache[key]
         self.screen.blit(sprite, (sx - sprite.get_width() // 2, sy - sprite.get_height() // 2))
 
-    def _draw_disc(self, player:int, sx:int, sy:int, z:int, depth: float, dimmed: bool = False):
+    def _draw_disc(self, player:int, sx:int, sy:int, z:int, depth: float):
         radius = self._disc_radius(depth)
-        shadow = self._get_shadow(radius, 64 if dimmed else 128)
-        if not dimmed:
-            self.screen.blit(shadow, (sx - shadow.get_width() // 2 + radius // 4,
-                                      sy - shadow.get_height() // 2 + radius // 2))
+        shadow = self._get_shadow(radius, 128)
+        self.screen.blit(shadow, (sx - shadow.get_width() // 2 + radius // 4,
+                                  sy - shadow.get_height() // 2 + radius // 2))
         sprite = self._get_disc_sprite(player, radius, z)
-        if dimmed:
-            sprite = sprite.copy()
-            sprite.set_alpha(78)
         self.screen.blit(sprite, (sx - sprite.get_width() // 2, sy - sprite.get_height() // 2))
 
     def _draw_ui(self, board, current_player:int, mode_text:str, _episodes:int,
@@ -872,15 +770,6 @@ class Renderer:
         hud.blit(surf, (18, 10))
         hud.blit(tip, (18, 40))
         self.screen.blit(hud, (18, 14))
-
-        backend = getattr(self, "render_backend", "CPU Pygame")
-        badge = self.small.render(backend, True, (255, 230, 130))
-        badge_w = badge.get_width() + 24
-        badge_layer = pygame.Surface((badge_w, 34), pygame.SRCALPHA)
-        pygame.draw.rect(badge_layer, (70, 52, 12, 170), badge_layer.get_rect(), border_radius=10)
-        pygame.draw.rect(badge_layer, (255, 220, 90, 120), badge_layer.get_rect(), width=1, border_radius=10)
-        badge_layer.blit(badge, (12, 7))
-        self.screen.blit(badge_layer, (w - badge_w - 24, self.screen.get_height() - 54))
 
     def pick_column_from_mouse(self, board, mx:int, my:int) -> Optional[Tuple[int,int]]:
         w,h = self.screen.get_size()
