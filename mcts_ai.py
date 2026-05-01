@@ -3,7 +3,7 @@ import math, random
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, List
 from board3d import Board3D
-from config import P1, P2, MAX_ROLLOUT_STEPS
+from config import P1, P2, MAX_ROLLOUT_STEPS, X_SIZE, Y_SIZE
 
 def other(p:int) -> int:
     return P1 if p == P2 else P2
@@ -44,10 +44,8 @@ def rollout_policy_move(board: Board3D, player:int) -> Tuple[int,int]:
         return random.choice(blocks)
     # 3) otherwise, biased random toward center
     moves = board.valid_moves()
-    X = 5  # board is 5x5 in this project; kept explicit for speed/stability
-    Y = 5
     # softmax-like sampling by center preference
-    scores = [center_score(m, X, Y) for m in moves]
+    scores = [center_score(m, X_SIZE, Y_SIZE) for m in moves]
     mx = max(scores)
     weights = [math.exp((s-mx)*0.35) for s in scores]
     total = sum(weights)
@@ -114,8 +112,7 @@ class MCTSAI:
                 # progressive bias: prefer center moves during expansion
                 moves = node.untried
                 # sample from top-k by center score
-                X = 5; Y = 5
-                scored = sorted(moves, key=lambda m: center_score(m,X,Y), reverse=True)
+                scored = sorted(moves, key=lambda m: center_score(m, X_SIZE, Y_SIZE), reverse=True)
                 k = min(6, len(scored))
                 m = random.choice(scored[:k])
                 node.untried.remove(m)

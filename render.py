@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
 import pygame
-from config import X_SIZE, Y_SIZE, GRID_SPACING, DISC_RADIUS, HOVER_RADIUS, UI_FONT_SIZE, EMPTY, P1, P2
+from config import X_SIZE, Y_SIZE, Z_SIZE, GRID_SPACING, DISC_RADIUS, HOVER_RADIUS, UI_FONT_SIZE, EMPTY, P1, P2
 from camera import Camera
 
 FONT_PATH_CANDIDATES = [
@@ -302,26 +302,33 @@ class MenuScene:
         overlay = pygame.Surface((w, h), pygame.SRCALPHA)
 
         pts = {}
+        cx = (X_SIZE - 1) * 0.5
+        cy = (Y_SIZE - 1) * 0.5
+        cz = (Z_SIZE - 1) * 0.5
         for x in range(X_SIZE):
             for y in range(Y_SIZE):
-                for z in range(5):
-                    wx = (x - 2) * spacing
-                    wy = (y - 2) * spacing
-                    wz = (z - 2) * spacing * 0.94
+                for z in range(Z_SIZE):
+                    wx = (x - cx) * spacing
+                    wy = (y - cy) * spacing
+                    wz = (z - cz) * spacing * 0.94
                     pts[(x, y, z)] = self._project_preview(wx, wy, wz, center, scale, yaw, pitch)
 
-        base_corners = [pts[(0, 0, 0)][:2], pts[(4, 0, 0)][:2], pts[(4, 4, 0)][:2], pts[(0, 4, 0)][:2]]
+        x_last = X_SIZE - 1
+        y_last = Y_SIZE - 1
+        z_last = Z_SIZE - 1
+        base_corners = [pts[(0, 0, 0)][:2], pts[(x_last, 0, 0)][:2],
+                        pts[(x_last, y_last, 0)][:2], pts[(0, y_last, 0)][:2]]
         pygame.draw.polygon(overlay, (255, 255, 255, 16), base_corners)
         pygame.draw.polygon(overlay, (96, 168, 224, 115), base_corners, width=2)
 
         for x in range(X_SIZE):
             for y in range(Y_SIZE):
                 bottom = pts[(x, y, 0)][:2]
-                top = pts[(x, y, 4)][:2]
+                top = pts[(x, y, z_last)][:2]
                 pygame.draw.line(overlay, (72, 184, 232, 38), bottom, top, 8)
                 pygame.draw.line(overlay, (158, 210, 248, 125), bottom, top, 2)
 
-        for z in (0, 4):
+        for z in (0, z_last):
             for y in range(Y_SIZE):
                 for x in range(X_SIZE - 1):
                     pygame.draw.line(overlay, (122, 155, 205, 72), pts[(x, y, z)][:2], pts[(x + 1, y, z)][:2], 1)
@@ -329,11 +336,26 @@ class MenuScene:
                 for y in range(Y_SIZE - 1):
                     pygame.draw.line(overlay, (122, 155, 205, 72), pts[(x, y, z)][:2], pts[(x, y + 1, z)][:2], 1)
 
-        preview_moves = [
-            (0, 0, 0, P1), (0, 0, 1, P2), (1, 1, 0, P2), (2, 2, 0, P1),
-            (2, 2, 1, P1), (2, 2, 2, P2), (3, 2, 0, P2), (3, 3, 0, P1),
-            (4, 4, 0, P2), (4, 4, 1, P1), (1, 3, 0, P1),
+        mid_x = X_SIZE // 2
+        mid_y = Y_SIZE // 2
+        left_x = max(0, mid_x - 1)
+        right_x = min(x_last, mid_x + 1)
+        low_y = max(0, mid_y - 1)
+        high_y = min(y_last, mid_y + 1)
+        preview_candidates = [
+            (0, 0, 0, P1), (0, 0, min(1, z_last), P2), (left_x, low_y, 0, P2),
+            (mid_x, mid_y, 0, P1), (mid_x, mid_y, min(1, z_last), P1),
+            (mid_x, mid_y, min(2, z_last), P2), (right_x, mid_y, 0, P2),
+            (right_x, high_y, 0, P1), (x_last, y_last, 0, P2),
+            (x_last, y_last, min(1, z_last), P1), (left_x, high_y, 0, P1),
         ]
+        preview_moves = []
+        seen_preview = set()
+        for move in preview_candidates:
+            key = move[:3]
+            if key not in seen_preview:
+                preview_moves.append(move)
+                seen_preview.add(key)
         preview_discs = []
         for x, y, z, player in preview_moves:
             sx, sy, depth = pts[(x, y, z)]
