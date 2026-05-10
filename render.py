@@ -1,8 +1,42 @@
 from __future__ import annotations
 import math
-import random 
-"Noto Sans CJK SC",
-"WenQuanYi Zen Hei",
+import random
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import pygame
+
+from camera import Camera
+from config import (
+    DISC_RADIUS,
+    EMPTY,
+    GRID_SPACING,
+    HOVER_RADIUS,
+    P1,
+    P2,
+    UI_FONT_SIZE,
+    X_SIZE,
+    Y_SIZE,
+    Z_SIZE,
+)
+
+FONT_PATH_CANDIDATES = [
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/System/Library/Fonts/STHeiti Medium.ttc",
+    "/System/Library/Fonts/STHeiti Light.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
+]
+
+FONT_NAME_CANDIDATES = [
+    "Hiragino Sans GB",
+    "STHeiti",
+    "PingFang SC",
+    "Arial Unicode MS",
+    "SimHei",
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    "WenQuanYi Zen Hei",
+]
 
 VISUAL_Z_SCALE = 1.04
 SPRITE_SCALE = 4
